@@ -5,7 +5,7 @@
   <version>0.1.0</version>
   <description>Draw the letter D with a UR3e end-effector using MoveIt 2 and Gazebo.</description>
 
-  <maintainer email="dung@users.noreply.github.com">Dũng</maintainer>
+  <maintainer email="kimidu2005@gmail.com">Dũng</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

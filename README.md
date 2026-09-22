@@ -32,14 +32,14 @@ waypoint và chỉ được thực thi khi Cartesian fraction đạt 100%.
 ## 2. Đối chiếu yêu cầu đề bài
 
 - Robot: UR3e simulation.
-- Mặt phẳng viết: mặt phẳng XZ trong frame `world`, tại `y = 0.223 m`.
-  Đây là hướng tự nhiên của TCP ở tư thế home nên đường tiếp cận ngắn và ít
+- Mặt phẳng viết: mặt phẳng XZ trong frame `world`, tại `y = 0.221 m`.
+  Đây là hướng tự nhiên của TCP ở tư thế home; dịch nhẹ ra ngoài robot và ít
   đổi nhánh IK hơn.
 - Tâm chữ: `x = 0.12 m`; đáy chữ ở `z = 0.55 m`, cao `0.12 m`, nên toàn bộ
   nét nằm cao hơn mặt đất và tránh vùng thân robot.
 - Kích thước chữ: cao `0.12 m`, rộng `0.08 m`; tỉ lệ này đủ rõ trong RViz/Gazebo
   và giữ cung cong cách xa vùng self-collision của robot.
-- Waypoint: một nét liên tục tối ưu gồm đoạn thẳng từ chân phải lên đỉnh phải,
+- Waypoint: một nét liên tục gồm đoạn thẳng từ chân phải lên đỉnh phải,
   sau đó là nửa elip bên trái quay về chân phải. Không có đoạn di chuyển chéo
   qua mặt phẳng khi đang chạm bút.
 - Điều khiển: MoveIt 2 lập kế hoạch và gửi joint trajectory đến controller.
@@ -58,7 +58,7 @@ waypoint và chỉ được thực thi khi Cartesian fraction đạt 100%.
 ## 3. Cấu trúc package
 
 ```text
-ur3/
+<repository>/
 ├── CMakeLists.txt
 ├── package.xml
 ├── LICENSE
@@ -97,17 +97,16 @@ simulation, Universal Robots ROS Driver không cần chạy robot thật.
 
 ## 5. Build
 
-Giả sử package được đặt tại `~/ros2_ws/src/ur3`:
+Từ thư mục workspace:
 
 ```bash
 cd ~/ros2_ws
 source /opt/ros/humble/setup.bash
 
-rosdep install --from-paths src/ur3 \
+rosdep install --from-paths src \
   --ignore-src -r -y --rosdistro humble
 
 colcon build \
-  --base-paths src/ur3 \
   --packages-select ur3_draw_letter \
   --symlink-install
 
@@ -152,7 +151,7 @@ Các launch argument:
 Sau khi launch đang chạy, mở terminal khác:
 
 ```bash
-cd ~/ros2_ws/src/ur3
+cd <path-to-repository>
 ./scripts/validate_runtime.sh
 ```
 
@@ -198,23 +197,7 @@ Hoan tat chu D mot lan.
 `Detected jump back in time`, hãy đóng các launch/Gazebo cũ bằng `Ctrl+C` rồi
 chạy lại một launch duy nhất.
 
-## 9. Chuẩn bị nộp GitHub
-
-Trước khi commit, kiểm tra:
-
-```bash
-cd ~/ros2_ws/src/ur3
-find . -maxdepth 2 -type f | sort
-git status
-```
-
-Chỉ cần nộp mã nguồn, cấu hình, launch, README và LICENSE. Không commit
-`build/`, `install/`, `log/` hoặc `__pycache__/`.
-
-Nếu tài khoản GitHub của bạn dùng username khác `dung`, hãy thay email
-maintainer trong `package.xml` bằng địa chỉ GitHub noreply tương ứng.
-
-## 10. Tài liệu tham khảo
+## 9. Tài liệu tham khảo
 
 - [ROS 2 Humble](https://docs.ros.org/en/humble/)
 - [Universal Robots ROS 2 Gazebo Simulation](https://github.com/UniversalRobots/Universal_Robots_ROS2_GZ_Simulation)
