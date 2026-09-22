@@ -323,7 +323,6 @@ int main(int argc, char ** argv)
   const auto logger = node->get_logger();
 
   // Mặt phẳng XZ cùng hướng tự nhiên của TCP ở tư thế khởi động. Đặt nó
-  // Mặt phẳng XZ cùng hướng tự nhiên của TCP ở tư thế khởi động. Đặt nó
   // gần y=0.221 để chữ nhích ra ngoài robot nhưng vẫn giữ nhánh IK ổn định.
   const double plane_y = node->declare_parameter("plane_y", 0.221);
   const double center_x = node->declare_parameter("center_x", 0.12);

@@ -15,9 +15,7 @@ Launch file khởi động:
 Node thực thi đúng một lần theo trình tự:
 
 ```text
-giữ tư thế khởi động
-        ↓
-HOVER → PEN DOWN → LETTER D → PEN UP
+READY → HOVER → PEN DOWN → LETTER D → PEN UP
 ```
 
 - `READY`: controller recovery giữ robot ở tư thế khởi động.
@@ -126,8 +124,9 @@ ros2 launch ur3_draw_letter draw_letter_d.launch.py
 ```
 
 Lệnh trên mở Gazebo và RViz. Launch tự chờ hai controller ở trạng thái
-`active`, gửi một goal giữ tư thế khởi động rồi mới khởi động node vẽ. Không
-có delay cố định 10 hoặc 20 giây.
+`active`, gửi một goal giữ tư thế khởi động rồi mới khởi động node vẽ. Node vẽ
+chỉ được khởi động sau khi controller recovery hoàn tất thành công, thay vì
+dựa vào một delay dài cố định.
 
 Có thể chạy không giao diện để kiểm tra terminal:
 
