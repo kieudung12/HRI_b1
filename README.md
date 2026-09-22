@@ -183,35 +183,39 @@ simulation, Universal Robots ROS Driver không cần chạy robot thật.
 
 ## 6. Build
 
-### Với repo local hiện tại
+### Cách clone được khuyến nghị
 
-Repo của bài đang nằm tại `/home/kieu/HRI/ur3`. Build từ thư mục cha của
-package:
+Các lệnh dưới đây dùng workspace mẫu `~/ros2_ws`. Đây chỉ là đường dẫn quy
+ước; người dùng có thể thay bằng bất kỳ workspace nào của mình.
 
 ```bash
-cd /home/kieu/HRI
+mkdir -p ~/ros2_ws/src
+cd ~/ros2_ws/src
+git clone https://github.com/kieudung12/HRI_b1.git ur3_draw_letter
+
+cd ~/ros2_ws
 source /opt/ros/humble/setup.bash
 
-rosdep install --from-paths ur3 \
+rosdep install --from-paths src \
   --ignore-src -r -y --rosdistro humble
 
 colcon build \
-  --base-paths ur3 \
   --packages-select ur3_draw_letter \
   --symlink-install
 
 source install/setup.bash
 ```
 
-Nếu clone repo vào `~/ros2_ws/src/ur3_draw_letter` thay vì dùng đường dẫn trên,
-đổi `ur3` thành `src` và chạy lệnh build từ `~/ros2_ws`.
+Nếu repository đã được clone sẵn, chỉ cần đặt nó bên trong thư mục `src` của
+workspace rồi tiếp tục từ bước `colcon build`. ROS 2 nhận diện package qua
+`package.xml`, không phụ thuộc tên thư mục GitHub.
 
 ## 7. Chạy simulation
 
 Chỉ chạy một launch của package trong một thời điểm:
 
 ```bash
-cd /home/kieu/HRI
+cd ~/ros2_ws
 source /opt/ros/humble/setup.bash
 source install/setup.bash
 
@@ -245,7 +249,7 @@ Các launch argument:
 Sau khi launch đang chạy, mở terminal khác:
 
 ```bash
-cd /home/kieu/HRI/ur3
+cd ~/ros2_ws/src/ur3_draw_letter
 ./scripts/validate_runtime.sh
 ```
 
@@ -258,7 +262,7 @@ Trong terminal khác:
 
 ```bash
 source /opt/ros/humble/setup.bash
-source /home/kieu/HRI/install/setup.bash
+source ~/ros2_ws/install/setup.bash
 
 ros2 control list_controllers
 ros2 topic echo /joint_states --once
