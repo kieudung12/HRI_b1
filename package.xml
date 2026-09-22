@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ur3_draw_letter</name>
+  <version>0.1.0</version>
+  <description>Draw the letter D with a UR3e end-effector using MoveIt 2 and Gazebo.</description>
+
+  <maintainer email="dung@users.noreply.github.com">Dũng</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>geometry_msgs</depend>
+  <depend>moveit_msgs</depend>
+  <depend>moveit_ros_planning_interface</depend>
+  <depend>rclcpp</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>visualization_msgs</depend>
+
+  <exec_depend>ur_simulation_gz</exec_depend>
+  <exec_depend>ur_moveit_config</exec_depend>
+  <exec_depend>ros_gz_sim</exec_depend>
+  <exec_depend>ros_gz_bridge</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>control_msgs</exec_depend>
+  <exec_depend>controller_manager</exec_depend>
+  <exec_depend>ros2controlcli</exec_depend>
+  <exec_depend>joint_state_broadcaster</exec_depend>
+  <exec_depend>joint_trajectory_controller</exec_depend>
+  <exec_depend>position_controllers</exec_depend>
+  <exec_depend>velocity_controllers</exec_depend>
+  <exec_depend>ur_controllers</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

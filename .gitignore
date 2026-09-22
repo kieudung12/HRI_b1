@@ -1,0 +1,12 @@
+build/
+install/
+log/
+.ros/
+__pycache__/
+*.py[cod]
+*.swp
+.vscode/
+.idea/
+.agents/
+.codex/
+VALIDATION_RESULTS.txt
