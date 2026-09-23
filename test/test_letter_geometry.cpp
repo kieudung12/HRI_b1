@@ -8,7 +8,7 @@
 
 int main()
 {
-  constexpr double plane_y = 0.223;
+  constexpr double plane_y = 0.221;
   constexpr double center_x = 0.12;
   constexpr double bottom_z = 0.55;
   constexpr double height = 0.12;

@@ -135,7 +135,7 @@ bool planAndExecutePose(
 
 double executeCartesian(
   MoveGroupInterface & move_group, const std::vector<geometry_msgs::msg::Pose> & waypoints,
-  double eef_step, double jump_threshold, double minimum_fraction,
+  double eef_step, double max_absolute_joint_step, double minimum_fraction,
   const rclcpp::Logger & logger,
   const std::string & label,
   const rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr & marker_publisher,
@@ -184,11 +184,11 @@ double executeCartesian(
       joint_name.c_str(), max_jump_index);
   }
 
-  if (label == "LETTER D" && max_joint_jump > jump_threshold) {
+  if (label == "LETTER D" && max_joint_jump > max_absolute_joint_step) {
     RCLCPP_ERROR(
       logger,
       "%s bi tu choi: buoc khop lon nhat %.3f rad vuot gioi han %.3f rad.",
-      label.c_str(), max_joint_jump, jump_threshold);
+      label.c_str(), max_joint_jump, max_absolute_joint_step);
     return 0.0;
   }
 
@@ -339,9 +339,10 @@ int main(int argc, char ** argv)
   // 10 mm đôi khi nhảy nghiệm ngay sau vài mẫu đầu.
   const double eef_step = node->declare_parameter("eef_step", 0.005);
   // Nét D dùng sampling 5 mm và có kiểm tra bước khớp tuyệt đối trong
-  // executeCartesian() dùng jump threshold = 0.0 của MoveIt và kiểm tra
-  // bước khớp tuyệt đối riêng cho LETTER D; collision checking vẫn bật.
-  const double jump_threshold = node->declare_parameter("jump_threshold", 0.5);
+  // MoveIt dùng relative jump threshold = 0.0; code kiểm tra riêng bước khớp
+  // tuyệt đối của LETTER D bằng giới hạn 0.5 rad, collision checking vẫn bật.
+  const double max_absolute_joint_step =
+    node->declare_parameter("max_absolute_joint_step", 0.5);
 
   auto marker_qos = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
   const auto marker_publisher = node->create_publisher<visualization_msgs::msg::Marker>(
@@ -400,7 +401,7 @@ int main(int argc, char ** argv)
   const auto cartesian = [&](const std::vector<geometry_msgs::msg::Pose> & poses,
       const std::string & label, bool draw = false) {
     return executeCartesian(
-      move_group, poses, eef_step, jump_threshold, minimum_fraction, logger, label,
+      move_group, poses, eef_step, max_absolute_joint_step, minimum_fraction, logger, label,
       marker_publisher, &tf_buffer, move_group.getPlanningFrame(), end_effector_link,
       draw) >= minimum_fraction;
   };

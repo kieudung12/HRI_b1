@@ -1,99 +1,100 @@
-# ur3_draw_letter
+# UR3e Cartesian Letter Drawing using ROS 2 and MoveIt 2
 
-Package ROS 2 cho Bài thực hành 01: dùng UR3e, Gazebo và MoveIt 2 để viết
-chữ cái đầu tiên trong tên **Dũng**, tức chữ **D**.
+**Human–Robot Interaction — Assignment 01**
+Điều khiển robot UR3e viết chữ **D** trong Gazebo bằng ROS 2 Humble và MoveIt 2.
 
-## 1. Mục tiêu và cách hoạt động
+Chữ D là chữ cái đầu trong tên **Dũng**. Package tập trung vào việc xây dựng
+Cartesian waypoint, lập kế hoạch chuyển động bằng MoveIt 2 và thực thi
+trajectory qua `joint_trajectory_controller`.
 
-Launch file khởi động:
+## 1. Overview
 
-1. UR3e simulation trong Gazebo Fortress.
-2. `joint_state_broadcaster` và `joint_trajectory_controller`.
-3. MoveIt 2 và RViz.
-4. Node điều khiển chữ D của sinh viên.
+Mục tiêu của bài là làm quen với một pipeline điều khiển robot công nghiệp:
 
-Node thực thi đúng một lần theo trình tự:
+- mô phỏng UR3e trong Gazebo Fortress;
+- nhận trạng thái khớp và TF từ simulation;
+- dùng MoveIt 2 cho inverse kinematics, planning và collision checking;
+- chuyển các waypoint Cartesian của chữ D thành joint trajectory;
+- quan sát robot và đường đi TCP trong RViz.
+
+Robot thực hiện một lần theo trình tự:
 
 ```text
 READY → HOVER → PEN DOWN → LETTER D → PEN UP
 ```
 
-- `READY`: controller recovery giữ robot ở tư thế khởi động.
-- `HOVER`: MoveIt lập kế hoạch pose thông thường để đưa TCP tới phía trên
-  điểm bắt đầu.
-- `PEN DOWN`, `LETTER D`, `PEN UP`: MoveIt lập kế hoạch Cartesian cho ba
-  đoạn waypoint.
+## 2. System Architecture
 
-Chuyển động được lập kế hoạch bằng MoveIt 2. Nét chữ được tạo từ Cartesian
-waypoint và chỉ được thực thi khi Cartesian fraction đạt 100%.
+```mermaid
+flowchart TD
+    A[Launch file] --> B[UR3e Gazebo Simulation]
+    B --> C[ros2_control Controllers]
+    C --> D[Joint states and TF]
+    D --> E[MoveIt 2 / move_group]
+    F[draw_letter_d_node] --> G[Cartesian Waypoints]
+    G --> E
+    E --> H[JointTrajectory]
+    H --> I[joint_trajectory_controller]
+    I --> B
 
-## 2. Đối chiếu yêu cầu đề bài
+    D --> F
+    F --> J[/drawing_path Marker]
+    J --> K[RViz]
+```
 
-- Robot: UR3e simulation.
-- Mặt phẳng viết: mặt phẳng XZ trong frame `world`, tại `y = 0.221 m`.
-  Đây là hướng tự nhiên của TCP ở tư thế home; dịch nhẹ ra ngoài robot và ít
-  đổi nhánh IK hơn.
-- Tâm chữ: `x = 0.12 m`; đáy chữ ở `z = 0.55 m`, cao `0.12 m`, nên toàn bộ
-  nét nằm cao hơn mặt đất và tránh vùng thân robot.
-- Kích thước chữ: cao `0.12 m`, rộng `0.08 m`; tỉ lệ này đủ rõ trong RViz/Gazebo
-  và giữ cung cong cách xa vùng self-collision của robot.
-- Waypoint: một nét liên tục gồm đoạn thẳng từ chân phải lên đỉnh phải,
-  sau đó là nửa elip bên trái quay về chân phải. Không có đoạn di chuyển chéo
-  qua mặt phẳng khi đang chạm bút.
-- Điều khiển: MoveIt 2 lập kế hoạch và gửi joint trajectory đến controller.
-- An toàn: MoveIt kiểm tra collision khi tính Cartesian path; quỹ đạo chỉ chạy
-  khi fraction đạt `1.0`. Nét D dùng `eef_step = 0.005 m` và kiểm tra bước
-  khớp tuyệt đối không quá `0.5 rad`; nghiệm IK của HOVER được chuẩn hóa về
-  nhánh gần tư thế hiện tại để tránh quỹ đạo đi vòng `2π`. Nét D dùng
-  `jump_threshold = 0.0` trong MoveIt để tránh heuristic tương đối loại nhầm
-  mẫu đầu; code vẫn chặn bước khớp tuyệt đối quá `0.5 rad` trước khi execute.
-- Controller dùng `trajectory tolerance = 0.30 rad`, đã kiểm tra ổn định trong
-  Gazebo.
-- Hiển thị: RViz tự nạp Marker ở topic `/drawing_path`.
-- Marker lấy vị trí TCP thực tế từ TF trong lúc robot đang viết, nên nét xanh
-  xuất hiện dần theo chuyển động của robot và không cần thêm Marker thủ công.
+`draw_letter_d.launch.py` khởi động simulation, controller, MoveIt, RViz và
+node vẽ theo đúng thứ tự phụ thuộc. Controller recovery chờ
+`joint_state_broadcaster` và `joint_trajectory_controller` ở trạng thái
+`active` trước khi cho node bắt đầu lập kế hoạch.
 
-### 2.1 Vì sao dùng MoveIt 2?
+## 3. Motion Sequence
 
-Tọa độ Cartesian của TCP không thể gửi trực tiếp đến joint controller. MoveIt 2
-đảm nhiệm các bước trung gian:
+| State | Description |
+|---|---|
+| `READY` | Recovery gửi goal giữ robot ở tư thế khởi động an toàn. |
+| `HOVER` | MoveIt giải IK và lập kế hoạch joint-space đến phía trên điểm bắt đầu. |
+| `PEN DOWN` | TCP hạ xuống mặt phẳng viết bằng Cartesian path. |
+| `LETTER D` | TCP đi theo toàn bộ waypoint của chữ D. |
+| `PEN UP` | TCP nhấc lên khỏi mặt phẳng sau khi viết xong. |
 
-1. nhận pose hoặc danh sách Cartesian waypoint;
-2. giải bài toán inverse kinematics để tìm góc khớp;
-3. kiểm tra giới hạn khớp và self-collision;
-4. sinh `JointTrajectory` theo thời gian;
-5. gửi trajectory đến `joint_trajectory_controller` để Gazebo thực thi.
+`HOVER` dùng pose planning vì đây là chuyển động tiếp cận. Ba đoạn còn lại
+dùng Cartesian path để TCP bám trực tiếp theo mặt phẳng và hình dạng chữ.
 
-Node chỉ cho phép thực thi khi Cartesian fraction đạt `1.0`. Nếu MoveIt chỉ
-đi được một phần đường, trajectory bị từ chối để robot không viết dở dang.
+## 4. Cartesian Letter-D Generation
 
-### 2.2 Nguyên lý tạo chữ D
-
-Chữ được vẽ trong frame `world`, trên mặt phẳng XZ với `y = 0.221 m` cố định:
+Chữ D được vẽ trong frame `world`, trên mặt phẳng XZ với tọa độ Y cố định:
 
 ```text
                  z
                  ↑
         đỉnh  ┌──┐
               │  )
-              │  )  ← nửa elip
+              │  )  ← nửa ellipse
         đáy   └──┘
                  └────────→ x
+
+                 y = 0.221 m
 ```
 
-TCP giữ nguyên orientation trong toàn bộ nét vẽ. Waypoint gồm một đoạn thẳng
-từ chân phải lên đỉnh phải, sau đó là nửa elip bên trái quay về chân phải.
-Không có đoạn nối chéo khi TCP đang hạ xuống nên đường đi đúng là một nét chữ
-liên tục trong một mặt phẳng.
+Các thông số hình học hiện tại:
 
-Với `center_x`, `bottom_z`, `height` và `width`, tọa độ chân phải được tính là:
+- `center_x = 0.12 m`;
+- `bottom_z = 0.55 m`;
+- `height = 0.12 m`;
+- `width = 0.08 m`;
+- `plane_y = 0.221 m`.
+
+TCP giữ orientation cố định trong khi viết. Chữ gồm một đoạn thẳng từ chân
+phải lên đỉnh phải, sau đó là nửa ellipse quay về chân phải.
+
+Vị trí chân phải được tính bởi:
 
 ```text
 x_right  = center_x + width / 2
 z_bottom = bottom_z
 ```
 
-Cung cong được lấy mẫu theo góc `theta`:
+Các điểm trên cung cong được nội suy theo:
 
 ```text
 x(theta) = x_right - width * cos(theta)
@@ -101,50 +102,44 @@ z(theta) = bottom_z + height / 2
            + height / 2 * sin(theta)
 ```
 
-Waypoint chỉ thay đổi X và Z; Y giữ nguyên bằng `plane_y`. Vì vậy TCP luôn nằm
-trên cùng một mặt phẳng Cartesian trong khi MoveIt chuyển đổi đường đi đó
-thành góc khớp.
+Waypoint chỉ thay đổi X và Z; Y giữ nguyên bằng `plane_y`. Vì vậy đường đi
+Cartesian nằm trên cùng một mặt phẳng trong suốt quá trình viết.
 
-### 2.3 Marker được cập nhật như thế nào?
+## 5. MoveIt 2 Planning and Safety
 
-Node publish `visualization_msgs/msg/Marker` kiểu `LINE_STRIP` lên
-`/drawing_path`. Trong lúc trajectory chạy, node đọc TF của `tool0` và thêm vị
-trí TCP thực tế vào marker. Do đó đường xanh xuất hiện dần theo chuyển động
-thật của robot, thay vì hiện sẵn toàn bộ waypoint. RViz đã được cấu hình sẵn
-topic này nên không cần thêm Marker thủ công.
+MoveIt 2 nhận pose/waypoint, giải inverse kinematics và tạo
+`JointTrajectory` cho controller. Package áp dụng các điều kiện an toàn sau:
 
-## 3. Các tham số chính
+- `HOVER` dùng pose planning; `PEN DOWN`, `LETTER D` và `PEN UP` dùng
+  `computeCartesianPath()`;
+- collision checking được bật khi tính Cartesian path;
+- Cartesian fraction phải đạt `1.0` trước khi trajectory được execute;
+- MoveIt relative jump threshold được truyền bằng `0.0`;
+- code có custom limit `max_absolute_joint_step = 0.5 rad` để kiểm tra bước
+  nhảy tuyệt đối giữa các mẫu khớp;
+- `velocity_scaling = 0.05` và `acceleration_scaling = 0.05`;
+- controller dùng trajectory tolerance `0.30 rad` để ổn định trong Gazebo;
+- nghiệm IK của HOVER được đưa về gần trạng thái khớp hiện tại để tránh đi
+  vòng thêm `2π` ở một khớp.
 
-| Tham số | Giá trị mặc định | Ý nghĩa |
+Các tham số hình học và planning chính:
+
+| Parameter | Default | Meaning |
 |---|---:|---|
-| `plane_y` | `0.221 m` | Vị trí mặt phẳng viết theo trục Y; đã dịch nhẹ ra ngoài robot. |
+| `plane_y` | `0.221 m` | Vị trí mặt phẳng viết theo trục Y. |
 | `center_x` | `0.12 m` | Tọa độ X tại tâm chữ. |
-| `bottom_z` | `0.55 m` | Độ cao đáy chữ, tránh mặt đất. |
+| `bottom_z` | `0.55 m` | Độ cao đáy chữ. |
 | `letter_height` | `0.12 m` | Chiều cao chữ D. |
 | `letter_width` | `0.08 m` | Chiều rộng chữ D. |
-| `lift_distance` | `0.05 m` | Khoảng nâng TCP trước và sau khi viết. |
-| `eef_step` | `0.005 m` | Bước lấy mẫu Cartesian của MoveIt, tương đương 5 mm. |
-| `kCurveWaypointCount` | `35` | Hằng số nội bộ: số mẫu mô tả cung cong của chữ D. |
-| `velocity_scaling` | `0.05` | Hệ số giới hạn vận tốc của MoveIt. |
-| `acceleration_scaling` | `0.05` | Hệ số giới hạn gia tốc của MoveIt. |
-| `jump_threshold` | `0.5 rad` | Ngưỡng kiểm tra riêng bước nhảy tuyệt đối giữa các mẫu khớp. |
-| trajectory tolerance | `0.30 rad` | Biên sai số trajectory của controller trong Gazebo. |
+| `lift_distance` | `0.05 m` | Khoảng TCP được nâng trước/sau khi viết. |
+| `eef_step` | `0.005 m` | Bước lấy mẫu Cartesian, tương đương 5 mm. |
+| `max_absolute_joint_step` | `0.5 rad` | Giới hạn bước nhảy khớp tuyệt đối. |
+| velocity / acceleration scaling | `0.05` | Giới hạn vận tốc và gia tốc của MoveIt. |
 
-`eef_step` nhỏ giúp đường Cartesian bám waypoint mượt hơn nhưng tạo nhiều mẫu
-trajectory hơn. Giá trị 5 mm là lựa chọn cân bằng giữa độ chính xác và thời
-gian thực thi. Tốc độ và gia tốc 0.05 giúp controller mô phỏng bám trajectory
-ổn định hơn khi Gazebo GUI và RViz cùng chạy.
-
-MoveIt được gọi với collision checking bật. `computeCartesianPath()` dùng
-`jump_threshold = 0.0` để không loại nhầm mẫu đầu do heuristic tương đối;
-code thực hiện một kiểm tra tuyệt đối riêng với ngưỡng `0.5 rad` và từ chối nét
-D nếu bước lớn nhất vượt ngưỡng. Nghiệm IK của HOVER cũng được đưa về gần
-trạng thái khớp hiện tại để tránh robot đi vòng thêm `2π` ở một khớp.
-
-## 4. Cấu trúc package
+## 6. Package Structure
 
 ```text
-<repository>/
+ur3_draw_letter/
 ├── CMakeLists.txt
 ├── package.xml
 ├── LICENSE
@@ -152,41 +147,44 @@ trạng thái khớp hiện tại để tránh robot đi vòng thêm `2π` ở m
 ├── config/
 │   ├── draw_letter.rviz
 │   └── ur_controllers_assignment.yaml
-├── launch/
-│   └── draw_letter_d.launch.py
+├── docs/images/
+│   └── .gitkeep
 ├── include/ur3_draw_letter/
 │   └── letter_geometry.hpp
+├── launch/
+│   └── draw_letter_d.launch.py
 ├── scripts/
 │   └── validate_runtime.sh
-├── test/
-│   └── test_letter_geometry.cpp
-└── src/
-    └── draw_letter_d_node.cpp
+├── src/
+│   └── draw_letter_d_node.cpp
+└── test/
+    └── test_letter_geometry.cpp
 ```
 
-Các thư mục `build/`, `install/`, `log/` và `__pycache__/` là file sinh tự
-động, đã được loại khỏi Git bằng `.gitignore`.
+- `launch/draw_letter_d.launch.py`: khởi động toàn bộ hệ thống.
+- `src/draw_letter_d_node.cpp`: MoveIt planning, execution và marker TCP.
+- `include/.../letter_geometry.hpp`: sinh waypoint hình học của chữ D.
+- `config/ur_controllers_assignment.yaml`: cấu hình controller mô phỏng.
+- `config/draw_letter.rviz`: Fixed Frame, RobotModel, MoveIt và Marker.
+- `scripts/validate_runtime.sh`: kiểm tra runtime sau khi launch.
+- `test/test_letter_geometry.cpp`: kiểm tra mặt phẳng và kích thước waypoint.
 
-## 5. Phụ thuộc
+## 7. Requirements
 
-Môi trường kiểm thử:
+- Ubuntu 22.04 hoặc WSL2 Ubuntu 22.04 có hỗ trợ GUI;
+- ROS 2 Humble Desktop;
+- MoveIt 2;
+- Gazebo Fortress;
+- `ur_description`;
+- `ur_moveit_config`;
+- `ur_simulation_gz`.
 
-- Ubuntu 22.04 hoặc WSL2 Ubuntu 22.04 có hỗ trợ GUI.
-- ROS 2 Humble Desktop.
-- MoveIt 2.
-- Gazebo Fortress / `ur_simulation_gz`.
-- Các package UR Humble: `ur_description`, `ur_moveit_config` và
-  `ur_simulation_gz`.
+Simulation không cần robot UR thật và không cần chạy Universal Robots ROS
+Driver. Các package UR cần được cài theo tài liệu chính thức trước khi build.
 
-Cài các package UR theo tài liệu chính thức của Universal Robots. Với
-simulation, Universal Robots ROS Driver không cần chạy robot thật.
+## 8. Build
 
-## 6. Build
-
-### Cách clone được khuyến nghị
-
-Các lệnh dưới đây dùng workspace mẫu `~/ros2_ws`. Đây chỉ là đường dẫn quy
-ước; người dùng có thể thay bằng bất kỳ workspace nào của mình.
+Ví dụ clone package vào workspace ROS 2:
 
 ```bash
 mkdir -p ~/ros2_ws/src
@@ -206,13 +204,9 @@ colcon build \
 source install/setup.bash
 ```
 
-Nếu repository đã được clone sẵn, chỉ cần đặt nó bên trong thư mục `src` của
-workspace rồi tiếp tục từ bước `colcon build`. ROS 2 nhận diện package qua
-`package.xml`, không phụ thuộc tên thư mục GitHub.
+## 9. Run
 
-## 7. Chạy simulation
-
-Chỉ chạy một launch của package trong một thời điểm:
+Chạy simulation, Gazebo, RViz và node viết chữ:
 
 ```bash
 cd ~/ros2_ws
@@ -222,29 +216,27 @@ source install/setup.bash
 ros2 launch ur3_draw_letter draw_letter_d.launch.py
 ```
 
-Lệnh trên mở Gazebo và RViz. Launch tự chờ hai controller ở trạng thái
-`active`, gửi một goal giữ tư thế khởi động rồi mới khởi động node vẽ. Node vẽ
-chỉ được khởi động sau khi controller recovery hoàn tất thành công, thay vì
-dựa vào một delay dài cố định.
-
-Có thể chạy không giao diện để kiểm tra terminal:
+Chạy headless để kiểm tra terminal:
 
 ```bash
 ros2 launch ur3_draw_letter draw_letter_d.launch.py \
   draw_gazebo_gui:=false draw_rviz:=false
 ```
 
-Các launch argument:
+Launch arguments:
 
-- `ur_type`: mặc định `ur3e`.
-- `draw_gazebo_gui`: mặc định `true`.
-- `draw_rviz`: mặc định `true`.
-- `draw_node`: mặc định `true`; đặt `false` nếu chỉ muốn kiểm tra simulation,
-  controller và TF.
-- `ign_partition`: mặc định `ur3_draw_letter`, giúp tách `/clock` khỏi các
-  phiên Gazebo khác.
+| Argument | Default | Description |
+|---|---|---|
+| `ur_type` | `ur3e` | Loại robot Universal Robots. |
+| `draw_gazebo_gui` | `true` | Bật/tắt cửa sổ Gazebo. |
+| `draw_rviz` | `true` | Bật/tắt RViz. |
+| `draw_node` | `true` | Bật/tắt node viết chữ. |
+| `ign_partition` | `ur3_draw_letter` | Partition Gazebo riêng cho package. |
 
-## 8. Runtime validation
+Chỉ nên chạy một launch Gazebo tại một thời điểm để tránh trùng `/clock` và
+`/controller_manager`.
+
+## 10. Validation
 
 Sau khi launch đang chạy, mở terminal khác:
 
@@ -253,12 +245,7 @@ cd ~/ros2_ws/src/ur3_draw_letter
 ./scripts/validate_runtime.sh
 ```
 
-Script in trạng thái ROS distro, controller, MoveIt, joint state, action và
-`/drawing_path`, sau đó kết luận `[PASS]` hoặc `[FAIL]`.
-
-## 9. Kiểm tra kết quả
-
-Trong terminal khác:
+Kiểm tra thủ công:
 
 ```bash
 source /opt/ros/humble/setup.bash
@@ -270,19 +257,18 @@ ros2 topic info /drawing_path
 ros2 topic info /clock
 ```
 
-Kết quả đúng cần có:
+Expected controller state:
 
 ```text
 joint_trajectory_controller   active
 joint_state_broadcaster       active
 ```
 
-Log đúng của node sẽ lần lượt có các dòng tương tự:
+Expected log chính:
 
 ```text
 READY: controller recovery hold da thanh cong.
 HOVER plan: SUCCESS
-HOVER execute: SUCCESS.
 PEN DOWN Cartesian fraction: 100.0%
 LETTER D Cartesian fraction: 100.0%
 LETTER D: execution thanh cong.
@@ -290,12 +276,25 @@ PEN UP: execution thanh cong.
 Hoan tat chu D mot lan.
 ```
 
-`ros2 topic info /clock` chỉ nên có một publisher. Launch đã đặt
-`IGN_PARTITION` riêng; nếu vẫn có hai publisher hoặc log báo
-`Detected jump back in time`, hãy đóng các launch/Gazebo cũ bằng `Ctrl+C` rồi
-chạy lại một launch duy nhất.
+## 11. Results
 
-## 10. Tài liệu tham khảo
+Ảnh minh họa sẽ được bổ sung sau khi chụp từ lần chạy cuối. Không đưa ảnh giả
+vào repository:
+
+<!-- Add screenshot here after creating docs/images/gazebo_result.png. -->
+<!-- ![UR3e simulation](docs/images/gazebo_result.png) -->
+
+<!-- Add screenshot here after creating docs/images/rviz_result.png. -->
+<!-- ![Letter D trajectory in RViz](docs/images/rviz_result.png) -->
+
+## 12. Demo
+
+- Video demo: **Add a public Google Drive link here**.
+- GitHub repository: <https://github.com/kieudung12/HRI_b1>
+
+Không thêm link video cho đến khi video được upload và cấp quyền public.
+
+## 13. References
 
 - [ROS 2 Humble](https://docs.ros.org/en/humble/)
 - [Universal Robots ROS 2 Gazebo Simulation](https://github.com/UniversalRobots/Universal_Robots_ROS2_GZ_Simulation)
