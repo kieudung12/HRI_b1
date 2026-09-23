@@ -254,7 +254,6 @@ Hoan tat chu D mot lan.
 - Video kết quả: <https://drive.google.com/file/d/1jdoLBA7VriOajd2HTTnhO_-BGdYgKXFS/view?usp=sharing>
 - Kho mã nguồn trên GitHub: <https://github.com/kieudung12/HRI_b1>
 
-Không thêm liên kết video cho đến khi video được tải lên và cấp quyền công khai.
 
 ## 12. Tài liệu tham khảo
 
